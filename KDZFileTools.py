@@ -3,6 +3,8 @@
   by IOMonster (thecubed on XDA)
 
   Please do not distribute without permission from the author of this software.
+  30-07-2014 Fixed for work with LG G3 D855 by Marc0sgb
+  
 """
 
 import os
@@ -21,7 +23,7 @@ class KDZFileTools:
     outdir = "kdzextracted"
     infile = None
 
-    kdz_header = "\x28\x05\x00\x00\x34\x31\x25\x80"
+    kdz_header = "\x28\x05\x00\x00\x24\x38\x22\x25"
     kdz_sub_len = 272
 
     # Format string dict
