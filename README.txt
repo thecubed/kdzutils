@@ -2,6 +2,7 @@
 
 LGE KDZ Utilities
 by IOMonster (thecubed on XDA)
+30-07-2014 Fixed for work with LG G3 D855 by Marc0sgb
 
 -------------------------------------------
 
