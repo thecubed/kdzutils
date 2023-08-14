@@ -10,6 +10,7 @@ import os
 import argparse
 from struct import *
 from collections import OrderedDict
+import sys
 
 class DZFileTools:
     """
@@ -20,8 +21,8 @@ class DZFileTools:
     partitions = []
     outdir = "dzextracted"
 
-    dz_header = "\x32\x96\x18\x74"
-    dz_sub_header = "\x30\x12\x95\x78"
+    dz_header = b"\x32\x96\x18\x74"
+    dz_sub_header = b"\x30\x12\x95\x78"
     dz_sub_len = 512
 
     # Format string dict
@@ -77,7 +78,7 @@ class DZFileTools:
         # Collapse (truncate) each key's value if it's listed as collapsible
         for key in self.dz_collapsibles:
             if key[1] == True:
-                dz_item[key[0]] = dz_item[key[0]].strip("\x00")
+                dz_item[key[0]] = dz_item[key[0]].strip(b"\x00")
 
         return dz_item
 
@@ -93,7 +94,7 @@ class DZFileTools:
 
             # Verify DZ sub-header
             if dz_sub['header'] != self.dz_sub_header:
-                print "[!] Bad DZ sub header!"
+                print ("[!] Bad DZ sub header!")
                 sys.exit(0)
 
             # Append it to our list
@@ -133,7 +134,8 @@ class DZFileTools:
             os.makedirs(self.outdir)
 
         # Open the new file for writing
-        outfile = open(os.path.join(self.outdir,currentPartition['name']), 'wb')
+        partitionName = currentPartition['name'].decode('ascii').rstrip('\x00')
+        outfile = open(os.path.join(self.outdir,partitionName), 'wb')
 
         # Read the whole compressed segment into RAM
         zdata = self.infile.read(currentPartition['length'])
@@ -168,27 +170,27 @@ class DZFileTools:
         # Verify DZ header
         verify_header = self.infile.read(4)
         if verify_header != self.dz_header:
-            print "[!] Error: Unsupported DZ file format."
-            print "[ ] Expected: %s ,\n\tbut received %s ." % (" ".join(hex(ord(n)) for n in self.dz_header), " ".join(hex(ord(n)) for n in verify_header))
+            print ("[!] Error: Unsupported DZ file format.")
+            print (f"[ ] Expected: {' '.join(hex(ord(n)) for n in self.dz_header)} ,\n but received {' '.join(hex(ord(n)) for n in verify_header)}")
             sys.exit(0)
 
         # Skip to end of DZ header
         self.infile.seek(512)
 
     def cmdListPartitions(self):
-        print "[+] DZ Partition List\n========================================="
+        print ("[+] DZ Partition List\n=========================================")
         for part in enumerate(self.partList):
-            print "%2d : %s (%d bytes)" % (part[0], part[1][0], part[1][1])
+            print("%2d : %s (%d bytes)" % (part[0], str(part[1][0], 'ascii').rstrip('\x00'), part[1][1]))
 
     def cmdExtractSingle(self, partID):
-        print "[+] Extracting single partition!\n"
-        print "[+] Extracting " + str(self.partList[partID][0]) + " to " + os.path.join(self.outdir,self.partList[partID][0])
+        print ("[+] Extracting single partition!")
+        print ("[+] Extracting " + str(self.partList[partID][0], 'ascii') + " to " + os.path.join(self.outdir,str(self.partList[partID][0], 'ascii')))
         self.extractPartition(partID)
 
     def cmdExtractAll(self):
-        print "[+] Extracting all partitions!\n"
+        print ("[+] Extracting all partitions!\n")
         for part in enumerate(self.partList):
-            print "[+] Extracting " + str(part[1][0]) + " to " + os.path.join(self.outdir,part[1][0])
+            print ("[+] Extracting " + str(part[1][0], 'ascii') + " to " + os.path.join(self.outdir,str(part[1][0], 'ascii')))
             self.extractPartition(part[0])
 
     def main(self):
@@ -199,7 +201,7 @@ class DZFileTools:
         if args.listOnly:
           self.cmdListPartitions()
 
-        elif args.extractID >= 0:
+        elif args.extractID is not None and args.extractID >= 0:
           self.cmdExtractSingle(args.extractID)
 
         elif args.extractAll:

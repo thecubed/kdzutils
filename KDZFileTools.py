@@ -181,7 +181,7 @@ class KDZFileTools:
     def cmdListPartitions(self):
         print( "[+] KDZ Partition List\n=========================================")
         for part in enumerate(self.partList):
-            print( "%2d : %s (%d bytes)" % (part[0], part[1][0], part[1][1]))
+            print( "%2d : %s (%d bytes)" % (part[0], str(part[1][0], 'ascii').rstrip('\x00'), part[1][1]))
 
     def main(self):
         args = self.parseArgs()
