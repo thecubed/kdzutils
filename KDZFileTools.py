@@ -21,7 +21,13 @@ class KDZFileTools:
     outdir = "kdzextracted"
     infile = None
 
-    kdz_header = "\x28\x05\x00\x00\x34\x31\x25\x80"
+    kdz_headers = [
+        b"\x28\x05\x00\x00\x34\x31\x25\x80",
+        b"\x18\x05\x00\x00\x32\x79\x44\x50",
+        b"\x28\x05\x00\x00\x24\x38\x22\x25"
+    ]
+
+
     kdz_sub_len = 272
 
     # Format string dict
@@ -68,7 +74,7 @@ class KDZFileTools:
         # Collapse (truncate) each key's value if it's listed as collapsible
         for key in self.kdz_collapsibles:
             if key[1] == True:
-                kdz_item[key[0]] = kdz_item[key[0]].strip("\x00")
+                kdz_item[key[0]] = kdz_item[key[0]].strip(b"\x00")
 
         return kdz_item
 
@@ -85,7 +91,7 @@ class KDZFileTools:
             self.partitions.append(kdz_sub)
 
             # Is there another KDZ header?
-            if self.infile.read(4) == "\x00\x00\x00\x00":
+            if self.infile.read(4) == b"\x00\x00\x00\x00":
                 break
 
             # Rewind file pointer 4 bytes
@@ -109,7 +115,8 @@ class KDZFileTools:
             os.makedirs(self.outdir)
 
         # Open the new file for writing
-        outfile = open(os.path.join(self.outdir,currentPartition['name']), 'wb')
+        partitionName = currentPartition['name'].decode('ascii').rstrip('\x00')
+        outfile = open(os.path.join(self.outdir,partitionName), 'wb')
 
         # Use 1024 byte chunks
         chunkSize = 1024
@@ -117,17 +124,15 @@ class KDZFileTools:
         # uncomment to prevent runaways
         #for x in xrange(10):
         
-        while True:
+        while outfile.tell() + chunkSize < currentPartition['length']:
         
             # Read file in 1024 byte chunks
             outfile.write(self.infile.read(chunkSize))
 
-            # If the output file + chunkSize would be larger than the input data
-            if outfile.tell() + chunkSize >= currentPartition['length']:
-                # Change the chunk size to be the difference between the length of the input and the current length of the output
-                outfile.write(self.infile.read(currentPartition['length'] - outfile.tell() ))
-                # Prevent runaways!
-                break
+        # Change the chunk size to be the difference between the length of the input and the current length of the output
+        bytesLeft = currentPartition['length'] - outfile.tell()
+        if bytesLeft >= 0:
+            outfile.write(self.infile.read(bytesLeft))
 
         # Close the file
         outfile.close()
@@ -155,26 +160,28 @@ class KDZFileTools:
 
         # Verify KDZ header
         verify_header = self.infile.read(8)
-        if verify_header != self.kdz_header:
-            print "[!] Error: Unsupported KDZ file format."
-            print "[ ] Expected: %s ,\n\tbut received %s ." % (" ".join(hex(ord(n)) for n in self.kdz_header), " ".join(hex(ord(n)) for n in verify_header))
+        # if verify_header != self.kdz_header:
+        if verify_header not in self.kdz_headers:
+            print("[!] Error: Unsupported KDZ file format.")
+            print(verify_header, self.kdz_header)
+            print(f"[ ] Expected: {' '.join(hex(ord(n)) for n in self.kdz_header)} ,\n but received {' '.join(hex((n)) for n in verify_header)} .")
             sys.exit(0)
 
     def cmdExtractSingle(self, partID):
-        print "[+] Extracting single partition!\n"
-        print "[+] Extracting " + str(self.partList[partID][0]) + " to " + os.path.join(self.outdir,self.partList[partID][0])
+        print("[+] Extracting single partition!\n")
+        print("[+] Extracting " + str(self.partList[partID][0], 'ascii') + " to " + os.path.join(self.outdir,str(self.partList[partID][0], 'ascii')))
         self.extractPartition(partID)
 
     def cmdExtractAll(self):
-        print "[+] Extracting all partitions!\n"
+        print("[+] Extracting all partitions!\n")
         for part in enumerate(self.partList):
-            print "[+] Extracting " + str(part[1][0]) + " to " + os.path.join(self.outdir,part[1][0])
+            print("[+] Extracting " + str(part[1][0], 'ascii') + " to " + os.path.join(self.outdir,str(part[1][0], 'ascii')))
             self.extractPartition(part[0])
 
     def cmdListPartitions(self):
-        print "[+] KDZ Partition List\n========================================="
+        print( "[+] KDZ Partition List\n=========================================")
         for part in enumerate(self.partList):
-            print "%2d : %s (%d bytes)" % (part[0], part[1][0], part[1][1])
+            print( "%2d : %s (%d bytes)" % (part[0], part[1][0], part[1][1]))
 
     def main(self):
         args = self.parseArgs()
@@ -184,7 +191,7 @@ class KDZFileTools:
         if args.listOnly:
           self.cmdListPartitions()
 
-        elif args.extractID >= 0:
+        elif args.extractID is not None and args.extractID >= 0:
           self.cmdExtractSingle(args.extractID)
 
         elif args.extractAll:
