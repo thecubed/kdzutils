@@ -21,6 +21,11 @@ class KDZFileTools:
     outdir = "kdzextracted"
     infile = None
 
+    # valid KDZ header formats:
+    # old format
+    # E975 format
+    # D855 format
+
     kdz_headers = [
         b"\x28\x05\x00\x00\x34\x31\x25\x80",
         b"\x18\x05\x00\x00\x32\x79\x44\x50",
@@ -160,11 +165,10 @@ class KDZFileTools:
 
         # Verify KDZ header
         verify_header = self.infile.read(8)
-        # if verify_header != self.kdz_header:
         if verify_header not in self.kdz_headers:
             print("[!] Error: Unsupported KDZ file format.")
-            print(verify_header, self.kdz_header)
-            print(f"[ ] Expected: {' '.join(hex(ord(n)) for n in self.kdz_header)} ,\n but received {' '.join(hex((n)) for n in verify_header)} .")
+            headers = '\n '.join([' '.join([hex((n)) for n in header]) for header in self.kdz_headers])
+            print(f"[ ] Expected: \n {headers} ,\n but received {' '.join(hex((n)) for n in verify_header)} .")
             sys.exit(0)
 
     def cmdExtractSingle(self, partID):
